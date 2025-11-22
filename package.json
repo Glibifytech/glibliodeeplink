@@ -1,18 +1,14 @@
 {
   "name": "gliblio-deeplink",
   "version": "1.0.0",
-  "description": "Deep link redirect server for Gliblio app",
-  "main": "index.js",
   "type": "module",
+  "description": "Redirect service for glibify.me",
+  "main": "index.js",
   "scripts": {
-    "start": "node index.js",
-    "dev": "node index.js"
+    "start": "node index.js"
   },
   "dependencies": {
-    "express": "^4.18.2",
-    "@supabase/supabase-js": "^2.39.0"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "@supabase/supabase-js": "^2.57.0",
+    "express": "^4.18.2"
   }
 }
