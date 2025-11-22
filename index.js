@@ -125,7 +125,7 @@ app.get("/test/:username", async (req, res) => {
     console.log(`🔗 WEB TEST: Supabase ANON_KEY: ${process.env.SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING'}`);
     
     const { data: user, error } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("username, id")
       .eq("username", username)
       .single();
@@ -192,7 +192,7 @@ app.get("/:username", async (req, res) => {
     console.log(`🔗 WEB: Supabase ANON_KEY configured: ${process.env.SUPABASE_ANON_KEY ? 'YES' : 'NO'}`)
 
     const { data: user, error } = await supabase
-      .from("profiles")
+      .from("user_profiles")
       .select("username, id")
       .eq("username", username)
       .single()
