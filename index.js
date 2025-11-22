@@ -188,7 +188,7 @@ app.get("/debug/connection", async (req, res) => {
     
     // Test basic table access
     const { data, error } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("count")
       .limit(1);
     
@@ -221,7 +221,7 @@ app.get("/debug/users", async (req, res) => {
     console.log(`🔗 DEBUG: Listing all users`);
     
     const { data: users, error } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("username, id")
       .limit(10);
     
@@ -256,12 +256,12 @@ app.get("/test/:username", async (req, res) => {
     console.log(`🔗 WEB TEST: - URL starts with: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
     
     console.log(`🔗 WEB TEST: Executing query:`);
-    console.log(`🔗 WEB TEST: - Table: user_profiles`);
+    console.log(`🔗 WEB TEST: - Table: profiles`);
     console.log(`🔗 WEB TEST: - Select: username, id`);
     console.log(`🔗 WEB TEST: - Where: username = '${username}'`);
     
     const { data: user, error } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("username, id")
       .eq("username", username)
       .single();
@@ -333,7 +333,7 @@ app.get("/:username", async (req, res) => {
     console.log(`🔗 WEB: Supabase ANON_KEY configured: ${process.env.SUPABASE_ANON_KEY ? 'YES' : 'NO'}`)
 
     const { data: user, error } = await supabase
-      .from("user_profiles")
+      .from("profiles")
       .select("username, id")
       .eq("username", username)
       .single()
