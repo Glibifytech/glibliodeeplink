@@ -12,10 +12,10 @@ const port = process.env.PORT || 3000
 // Serve static files from public directory
 app.use(express.static('public'))
 
-// connect to Supabase
+// connect to Supabase with custom read_profilekey role
 const supabase = createClient(
   process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY
+  process.env.SUPABASE_READ_PROFILE_KEY
 )
 
 // Serve assetlinks.json for domain verification
@@ -183,7 +183,7 @@ app.get("/debug/connection", async (req, res) => {
   try {
     console.log(`🔗 DEBUG: Testing connection`);
     console.log(`🔗 DEBUG: SUPABASE_URL exists: ${!!process.env.SUPABASE_URL}`);
-    console.log(`🔗 DEBUG: SUPABASE_ANON_KEY exists: ${!!process.env.SUPABASE_ANON_KEY}`);
+    console.log(`🔗 DEBUG: SUPABASE_READ_PROFILE_KEY exists: ${!!process.env.SUPABASE_READ_PROFILE_KEY}`);
     console.log(`🔗 DEBUG: SUPABASE_URL value: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
     
     // Test basic table access
@@ -197,7 +197,7 @@ app.get("/debug/connection", async (req, res) => {
     return res.json({
       success: true,
       hasUrl: !!process.env.SUPABASE_URL,
-      hasKey: !!process.env.SUPABASE_ANON_KEY,
+      hasKey: !!process.env.SUPABASE_READ_PROFILE_KEY,
       tableAccess: !error,
       error: error?.message,
       details: error
@@ -209,7 +209,7 @@ app.get("/debug/connection", async (req, res) => {
       success: false,
       error: error.message,
       hasUrl: !!process.env.SUPABASE_URL,
-      hasKey: !!process.env.SUPABASE_ANON_KEY,
+      hasKey: !!process.env.SUPABASE_READ_PROFILE_KEY,
       tableAccess: false
     });
   }
@@ -252,7 +252,7 @@ app.get("/test/:username", async (req, res) => {
     
     console.log(`🔗 WEB TEST: Environment check:`);
     console.log(`🔗 WEB TEST: - SUPABASE_URL: ${process.env.SUPABASE_URL ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔗 WEB TEST: - SUPABASE_ANON_KEY: ${process.env.SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING'}`);
+    console.log(`🔗 WEB TEST: - SUPABASE_READ_PROFILE_KEY: ${process.env.SUPABASE_READ_PROFILE_KEY ? 'CONFIGURED' : 'MISSING'}`);
     console.log(`🔗 WEB TEST: - URL starts with: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
     
     console.log(`🔗 WEB TEST: Executing query:`);
@@ -330,7 +330,7 @@ app.get("/:username", async (req, res) => {
     
     console.log(`🔗 WEB: Looking up profile for username: ${username}`)
     console.log(`🔗 WEB: Supabase URL configured: ${process.env.SUPABASE_URL ? 'YES' : 'NO'}`)
-    console.log(`🔗 WEB: Supabase ANON_KEY configured: ${process.env.SUPABASE_ANON_KEY ? 'YES' : 'NO'}`)
+    console.log(`🔗 WEB: Supabase READ_PROFILE_KEY configured: ${process.env.SUPABASE_READ_PROFILE_KEY ? 'YES' : 'NO'}`)
 
     const { data: user, error } = await supabase
       .from("profiles")
