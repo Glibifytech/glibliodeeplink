@@ -54,6 +54,8 @@ app.get("/", (req, res) => {
                 <br>
                 <button onclick="testUsername()">Test Username</button>
                 <button onclick="testDeepLink()">Test Deep Link</button>
+                <button onclick="listAllUsers()">List All Users</button>
+                <button onclick="testConnection()">Test DB Connection</button>
             </div>
             
             <div id="result"></div>
@@ -107,6 +109,67 @@ app.get("/", (req, res) => {
                 // This will trigger the actual deep link flow
                 window.location.href = '/' + username;
             }
+            
+            async function listAllUsers() {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<div class="result info">Loading all users...</div>';
+                
+                try {
+                    const response = await fetch('/debug/users');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        let userList = data.users.map(user => 
+                            '<li><strong>' + user.username + '</strong> (ID: ' + user.id + ')</li>'
+                        ).join('');
+                        
+                        resultDiv.innerHTML = '<div class="result success">' +
+                            '<h3>✅ FOUND ' + data.count + ' USERS</h3>' +
+                            '<ul style="text-align: left;">' + userList + '</ul>' +
+                        '</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="result error">' +
+                            '<h3>❌ ERROR LISTING USERS</h3>' +
+                            '<p><strong>Error:</strong> ' + data.error + '</p>' +
+                        '</div>';
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = '<div class="result error">' +
+                        '<h3>❌ NETWORK ERROR</h3>' +
+                        '<p>' + error.message + '</p>' +
+                    '</div>';
+                }
+            }
+            
+            async function testConnection() {
+                const resultDiv = document.getElementById('result');
+                resultDiv.innerHTML = '<div class="result info">Testing database connection...</div>';
+                
+                try {
+                    const response = await fetch('/debug/connection');
+                    const data = await response.json();
+                    
+                    if (data.success) {
+                        resultDiv.innerHTML = '<div class="result success">' +
+                            '<h3>✅ CONNECTION SUCCESS</h3>' +
+                            '<p><strong>Supabase URL:</strong> ' + (data.hasUrl ? 'CONFIGURED' : 'MISSING') + '</p>' +
+                            '<p><strong>Supabase Key:</strong> ' + (data.hasKey ? 'CONFIGURED' : 'MISSING') + '</p>' +
+                            '<p><strong>Table Access:</strong> ' + (data.tableAccess ? 'SUCCESS' : 'FAILED') + '</p>' +
+                        '</div>';
+                    } else {
+                        resultDiv.innerHTML = '<div class="result error">' +
+                            '<h3>❌ CONNECTION FAILED</h3>' +
+                            '<p><strong>Error:</strong> ' + data.error + '</p>' +
+                            '<p><strong>Details:</strong> ' + JSON.stringify(data.details) + '</p>' +
+                        '</div>';
+                    }
+                } catch (error) {
+                    resultDiv.innerHTML = '<div class="result error">' +
+                        '<h3>❌ NETWORK ERROR</h3>' +
+                        '<p>' + error.message + '</p>' +
+                    '</div>';
+                }
+            }
         </script>
     </body>
     </html>
@@ -115,14 +178,87 @@ app.get("/", (req, res) => {
   res.send(html);
 })
 
+// Debug route: test connection
+app.get("/debug/connection", async (req, res) => {
+  try {
+    console.log(`🔗 DEBUG: Testing connection`);
+    console.log(`🔗 DEBUG: SUPABASE_URL exists: ${!!process.env.SUPABASE_URL}`);
+    console.log(`🔗 DEBUG: SUPABASE_ANON_KEY exists: ${!!process.env.SUPABASE_ANON_KEY}`);
+    console.log(`🔗 DEBUG: SUPABASE_URL value: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
+    
+    // Test basic table access
+    const { data, error } = await supabase
+      .from("user_profiles")
+      .select("count")
+      .limit(1);
+    
+    console.log(`🔗 DEBUG: Table access test:`, { data, error });
+    
+    return res.json({
+      success: true,
+      hasUrl: !!process.env.SUPABASE_URL,
+      hasKey: !!process.env.SUPABASE_ANON_KEY,
+      tableAccess: !error,
+      error: error?.message,
+      details: error
+    });
+    
+  } catch (error) {
+    console.error(`🔗 DEBUG: Connection test failed:`, error);
+    return res.json({
+      success: false,
+      error: error.message,
+      hasUrl: !!process.env.SUPABASE_URL,
+      hasKey: !!process.env.SUPABASE_ANON_KEY,
+      tableAccess: false
+    });
+  }
+});
+
+// Debug route: list all users
+app.get("/debug/users", async (req, res) => {
+  try {
+    console.log(`🔗 DEBUG: Listing all users`);
+    
+    const { data: users, error } = await supabase
+      .from("user_profiles")
+      .select("username, id")
+      .limit(10);
+    
+    console.log(`🔗 DEBUG: Found ${users?.length || 0} users:`, users);
+    
+    return res.json({
+      success: !error,
+      users: users || [],
+      error: error?.message,
+      count: users?.length || 0
+    });
+    
+  } catch (error) {
+    console.error(`🔗 DEBUG: Error listing users:`, error);
+    return res.json({
+      success: false,
+      error: error.message,
+      users: []
+    });
+  }
+});
+
 // Test route: gliblio.com/test/username (returns JSON)
 app.get("/test/:username", async (req, res) => {
   try {
     const username = req.params.username.toLowerCase().trim();
-    console.log(`🔗 WEB TEST: Testing username: ${username}`);
+    console.log(`🔗 WEB TEST: ========== TESTING USERNAME: ${username} ==========`);
     
-    console.log(`🔗 WEB TEST: Supabase URL: ${process.env.SUPABASE_URL ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔗 WEB TEST: Supabase ANON_KEY: ${process.env.SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING'}`);
+    console.log(`🔗 WEB TEST: Environment check:`);
+    console.log(`🔗 WEB TEST: - SUPABASE_URL: ${process.env.SUPABASE_URL ? 'CONFIGURED' : 'MISSING'}`);
+    console.log(`🔗 WEB TEST: - SUPABASE_ANON_KEY: ${process.env.SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING'}`);
+    console.log(`🔗 WEB TEST: - URL starts with: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
+    
+    console.log(`🔗 WEB TEST: Executing query:`);
+    console.log(`🔗 WEB TEST: - Table: user_profiles`);
+    console.log(`🔗 WEB TEST: - Select: username, id`);
+    console.log(`🔗 WEB TEST: - Where: username = '${username}'`);
     
     const { data: user, error } = await supabase
       .from("user_profiles")
@@ -130,7 +266,12 @@ app.get("/test/:username", async (req, res) => {
       .eq("username", username)
       .single();
     
-    console.log(`🔗 WEB TEST: Database response:`, { user, error });
+    console.log(`🔗 WEB TEST: Raw database response:`);
+    console.log(`🔗 WEB TEST: - User data:`, user);
+    console.log(`🔗 WEB TEST: - Error:`, error);
+    console.log(`🔗 WEB TEST: - Error code:`, error?.code);
+    console.log(`🔗 WEB TEST: - Error message:`, error?.message);
+    console.log(`🔗 WEB TEST: - Error details:`, error?.details);
     
     if (error) {
       return res.json({
