@@ -1,5 +1,4 @@
 import express from "express"
-import { createClient } from "@supabase/supabase-js"
 import path from "path"
 import { fileURLToPath } from "url"
 
@@ -10,18 +9,6 @@ const app = express()
 const port = process.env.PORT || 3000
 
 app.use(express.static('public'))
-
-const supabase = createClient(
-  process.env.SUPABASE_URL,
-  process.env.SUPABASE_ANON_KEY,
-  {
-    global: {
-      headers: {
-        Authorization: `Bearer ${process.env.SUPABASE_READ_PROFILE_KEY}`
-      }
-    }
-  }
-)
 
 app.get("/.well-known/assetlinks.json", (req, res) => {
   res.setHeader('Content-Type', 'application/json')
@@ -41,45 +28,24 @@ app.get("/", (req, res) => {
   `)
 })
 
-// Username route - redirect to app
-app.get("/:username", async (req, res) => {
-  try {
-    const username = req.params.username.toLowerCase().trim()
-    
-    // Filter system files
-    const systemFiles = ['.env', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json', '.git']
-    if (systemFiles.some(file => username.includes(file)) || 
-        username.startsWith('.') || 
-        username.includes('/') ||
-        username.length < 2 ||
-        username.length > 30) {
-      return res.status(404).send('Not Found')
-    }
-
-    console.log(`🔗 Looking up: ${username}`)
-
-    const { data: user, error } = await supabase
-      .from("profiles")
-      .select("username, id")
-      .eq("username", username)
-      .single()
-
-    if (error || !user) {
-      console.log(`🔗 User not found: ${username}`)
-      return res.redirect(`gliblio://home?error=user_not_found&username=${username}`)
-    }
-
-    console.log(`🔗 Found user: ${user.username} -> ${user.id}`)
-    return res.redirect(`gliblio://profile/${user.id}`)
-    
-  } catch (error) {
-    console.error("🔗 Error:", error)
-    res.redirect(`gliblio://home?error=server_error`)
+app.get("/:username", (req, res) => {
+  const username = req.params.username.toLowerCase().trim()
+  
+  const systemFiles = ['.env', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json', '.git']
+  if (systemFiles.some(file => username.includes(file)) || 
+      username.startsWith('.') || 
+      username.includes('/') ||
+      username.length < 2 ||
+      username.length > 30) {
+    return res.status(404).send('Not Found')
   }
+
+  console.log(`🔗 Username request: ${username} - returning OK for Android App Links`)
+  res.send('OK')
 })
 
 app.use("*", (req, res) => {
-  res.redirect('gliblio://home')
+  res.send('OK')
 })
 
 app.listen(port, () => {
