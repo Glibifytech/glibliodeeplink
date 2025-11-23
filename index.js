@@ -9,10 +9,10 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const port = process.env.PORT || 3000
 
-// Serve static files from public directory
-app.use(express.static('public'))
+// Serve static files
+app.use(express.static("public"))
 
-// connect to Supabase with anon key + custom JWT (exactly like working test)
+// Supabase client
 const supabase = createClient(
   process.env.SUPABASE_URL,
   process.env.SUPABASE_ANON_KEY,
@@ -25,325 +25,67 @@ const supabase = createClient(
   }
 )
 
-// Serve assetlinks.json for domain verification
+// Asset links for Android verification
 app.get("/.well-known/assetlinks.json", (req, res) => {
-  res.setHeader('Content-Type', 'application/json')
-  res.sendFile(path.join(__dirname, '.well-known', 'assetlinks.json'))
+  res.setHeader("Content-Type", "application/json")
+  res.sendFile(path.join(__dirname, ".well-known", "assetlinks.json"))
 })
 
-// Route: gliblio.com (home page) - show test UI
+/* HOME PAGE */
 app.get("/", (req, res) => {
-  console.log('🔗 WEB: Home page request - showing test UI')
   const html = `
     <!DOCTYPE html>
     <html>
-    <head>
-        <title>Gliblio Deep Link Tester</title>
-        <style>
-            body { font-family: Arial, sans-serif; max-width: 600px; margin: 50px auto; padding: 20px; }
-            .container { text-align: center; }
-            input { padding: 10px; font-size: 16px; width: 200px; margin: 10px; }
-            button { padding: 10px 20px; font-size: 16px; background: #007bff; color: white; border: none; cursor: pointer; }
-            button:hover { background: #0056b3; }
-            .result { margin: 20px 0; padding: 15px; border-radius: 5px; }
-            .success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
-            .error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
-            .info { background: #d1ecf1; color: #0c5460; border: 1px solid #bee5eb; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔗 Gliblio Deep Link Tester</h1>
-            <p>Test username lookup and deep link generation</p>
-            
-            <div>
-                <input type="text" id="username" placeholder="Enter username" value="gabbymoney">
-                <br>
-                <button onclick="testUsername()">Test Username</button>
-                <button onclick="testDeepLink()">Test Deep Link</button>
-                <button onclick="listAllUsers()">List All Users</button>
-                <button onclick="testConnection()">Test DB Connection</button>
-            </div>
-            
-            <div id="result"></div>
-        </div>
-        
-        <script>
-            async function testUsername() {
-                const username = document.getElementById('username').value.trim();
-                const resultDiv = document.getElementById('result');
-                
-                if (!username) {
-                    resultDiv.innerHTML = '<div class="result error">Please enter a username</div>';
-                    return;
-                }
-                
-                resultDiv.innerHTML = '<div class="result info">Testing username: ' + username + '...</div>';
-                
-                try {
-                    const response = await fetch('/test/' + username);
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        resultDiv.innerHTML = '<div class="result success">' +
-                            '<h3>✅ SUCCESS!</h3>' +
-                            '<p><strong>Username:</strong> ' + data.user.username + '</p>' +
-                            '<p><strong>User ID:</strong> ' + data.user.id + '</p>' +
-                            '<p><strong>Deep Link:</strong> gliblio://profile/' + data.user.id + '</p>' +
-                        '</div>';
-                    } else {
-                        resultDiv.innerHTML = '<div class="result error">' +
-                            '<h3>❌ ERROR</h3>' +
-                            '<p><strong>Error:</strong> ' + data.error + '</p>' +
-                            '<p><strong>Details:</strong> ' + JSON.stringify(data.details) + '</p>' +
-                        '</div>';
-                    }
-                } catch (error) {
-                    resultDiv.innerHTML = '<div class="result error">' +
-                        '<h3>❌ NETWORK ERROR</h3>' +
-                        '<p>' + error.message + '</p>' +
-                    '</div>';
-                }
-            }
-            
-            function testDeepLink() {
-                const username = document.getElementById('username').value.trim();
-                if (!username) {
-                    alert('Please enter a username');
-                    return;
-                }
-                
-                // This will trigger the actual deep link flow
-                window.location.href = '/' + username;
-            }
-            
-            async function listAllUsers() {
-                const resultDiv = document.getElementById('result');
-                resultDiv.innerHTML = '<div class="result info">Loading all users...</div>';
-                
-                try {
-                    const response = await fetch('/debug/users');
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        let userList = data.users.map(user => 
-                            '<li><strong>' + user.username + '</strong> (ID: ' + user.id + ')</li>'
-                        ).join('');
-                        
-                        resultDiv.innerHTML = '<div class="result success">' +
-                            '<h3>✅ FOUND ' + data.count + ' USERS</h3>' +
-                            '<ul style="text-align: left;">' + userList + '</ul>' +
-                        '</div>';
-                    } else {
-                        resultDiv.innerHTML = '<div class="result error">' +
-                            '<h3>❌ ERROR LISTING USERS</h3>' +
-                            '<p><strong>Error:</strong> ' + data.error + '</p>' +
-                        '</div>';
-                    }
-                } catch (error) {
-                    resultDiv.innerHTML = '<div class="result error">' +
-                        '<h3>❌ NETWORK ERROR</h3>' +
-                        '<p>' + error.message + '</p>' +
-                    '</div>';
-                }
-            }
-            
-            async function testConnection() {
-                const resultDiv = document.getElementById('result');
-                resultDiv.innerHTML = '<div class="result info">Testing database connection...</div>';
-                
-                try {
-                    const response = await fetch('/debug/connection');
-                    const data = await response.json();
-                    
-                    if (data.success) {
-                        resultDiv.innerHTML = '<div class="result success">' +
-                            '<h3>✅ CONNECTION SUCCESS</h3>' +
-                            '<p><strong>Supabase URL:</strong> ' + (data.hasUrl ? 'CONFIGURED' : 'MISSING') + '</p>' +
-                            '<p><strong>Anon Key:</strong> ' + (data.hasAnonKey ? 'CONFIGURED' : 'MISSING') + '</p>' +
-                            '<p><strong>Custom Key:</strong> ' + (data.hasCustomKey ? 'CONFIGURED' : 'MISSING') + '</p>' +
-                            '<p><strong>Table Access:</strong> ' + (data.tableAccess ? 'SUCCESS' : 'FAILED') + '</p>' +
-                        '</div>';
-                    } else {
-                        resultDiv.innerHTML = '<div class="result error">' +
-                            '<h3>❌ CONNECTION FAILED</h3>' +
-                            '<p><strong>Error:</strong> ' + data.error + '</p>' +
-                            '<p><strong>Details:</strong> ' + JSON.stringify(data.details) + '</p>' +
-                        '</div>';
-                    }
-                } catch (error) {
-                    resultDiv.innerHTML = '<div class="result error">' +
-                        '<h3>❌ NETWORK ERROR</h3>' +
-                        '<p>' + error.message + '</p>' +
-                    '</div>';
-                }
-            }
-        </script>
+    <head><title>Gliblio Test</title></head>
+    <body style="font-family:Arial;padding:40px;">
+      <h2>🔗 Gliblio Deep Link Server Running</h2>
+      <p>Try: <code>/test/username</code> or <code>/[username]</code></p>
     </body>
     </html>
-  `;
-  
-  res.send(html);
+  `
+  res.send(html)
 })
 
-// Debug route: test connection
+/* DEBUG: Check DB connection */
 app.get("/debug/connection", async (req, res) => {
   try {
-    console.log(`🔗 DEBUG: Testing connection`);
-    console.log(`🔗 DEBUG: SUPABASE_URL exists: ${!!process.env.SUPABASE_URL}`);
-    console.log(`🔗 DEBUG: SUPABASE_ANON_KEY exists: ${!!process.env.SUPABASE_ANON_KEY}`);
-    console.log(`🔗 DEBUG: SUPABASE_READ_PROFILE_KEY exists: ${!!process.env.SUPABASE_READ_PROFILE_KEY}`);
-    console.log(`🔗 DEBUG: SUPABASE_URL value: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
-    
-    // Test basic table access
     const { data, error } = await supabase
       .from("profiles")
       .select("count")
-      .limit(1);
-    
-    console.log(`🔗 DEBUG: Table access test:`, { data, error });
-    
-    return res.json({
+      .limit(1)
+
+    res.json({
       success: true,
-      hasUrl: !!process.env.SUPABASE_URL,
-      hasAnonKey: !!process.env.SUPABASE_ANON_KEY,
-      hasCustomKey: !!process.env.SUPABASE_READ_PROFILE_KEY,
       tableAccess: !error,
       error: error?.message,
-      details: error
-    });
-    
-  } catch (error) {
-    console.error(`🔗 DEBUG: Connection test failed:`, error);
-    return res.json({
-      success: false,
-      error: error.message,
-      hasUrl: !!process.env.SUPABASE_URL,
-      hasAnonKey: !!process.env.SUPABASE_ANON_KEY,
-      hasCustomKey: !!process.env.SUPABASE_READ_PROFILE_KEY,
-      tableAccess: false
-    });
+    })
+  } catch (e) {
+    res.json({ success: false, error: e.message })
   }
-});
+})
 
-// Debug route: list all users
+/* DEBUG: List users */
 app.get("/debug/users", async (req, res) => {
   try {
-    console.log(`🔗 DEBUG: Listing all users`);
-    
-    const { data: users, error } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("username, id")
-      .limit(10);
-    
-    console.log(`🔗 DEBUG: Found ${users?.length || 0} users:`, users);
-    
-    return res.json({
-      success: !error,
-      users: users || [],
-      error: error?.message,
-      count: users?.length || 0
-    });
-    
-  } catch (error) {
-    console.error(`🔗 DEBUG: Error listing users:`, error);
-    return res.json({
-      success: false,
-      error: error.message,
-      users: []
-    });
-  }
-});
+      .limit(10)
 
-// Test route: gliblio.com/test/username (returns JSON)
+    res.json({
+      success: !error,
+      users: data || [],
+      error: error?.message
+    })
+  } catch (e) {
+    res.json({ success: false, users: [], error: e.message })
+  }
+})
+
+/* TEST ROUTE (JSON only) */
 app.get("/test/:username", async (req, res) => {
   try {
-    const username = req.params.username.toLowerCase().trim();
-    console.log(`🔗 WEB TEST: ========== TESTING USERNAME: ${username} ==========`);
-    
-    console.log(`🔗 WEB TEST: Environment check:`);
-    console.log(`🔗 WEB TEST: - SUPABASE_URL: ${process.env.SUPABASE_URL ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔗 WEB TEST: - SUPABASE_ANON_KEY: ${process.env.SUPABASE_ANON_KEY ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔗 WEB TEST: - SUPABASE_READ_PROFILE_KEY: ${process.env.SUPABASE_READ_PROFILE_KEY ? 'CONFIGURED' : 'MISSING'}`);
-    console.log(`🔗 WEB TEST: - URL starts with: ${process.env.SUPABASE_URL?.substring(0, 30)}...`);
-    
-    console.log(`🔗 WEB TEST: Executing query:`);
-    console.log(`🔗 WEB TEST: - Table: profiles`);
-    console.log(`🔗 WEB TEST: - Select: username, id`);
-    console.log(`🔗 WEB TEST: - Where: username = '${username}'`);
-    
-    const { data: user, error } = await supabase
-      .from("profiles")
-      .select("username, id")
-      .eq("username", username)
-      .single();
-    
-    console.log(`🔗 WEB TEST: Raw database response:`);
-    console.log(`🔗 WEB TEST: - User data:`, user);
-    console.log(`🔗 WEB TEST: - Error:`, error);
-    console.log(`🔗 WEB TEST: - Error code:`, error?.code);
-    console.log(`🔗 WEB TEST: - Error message:`, error?.message);
-    console.log(`🔗 WEB TEST: - Error details:`, error?.details);
-    
-    if (error) {
-      return res.json({
-        success: false,
-        error: error.message,
-        details: error,
-        username: username
-      });
-    }
-    
-    if (!user) {
-      return res.json({
-        success: false,
-        error: 'User not found',
-        details: 'No user found with this username',
-        username: username
-      });
-    }
-    
-    return res.json({
-      success: true,
-      user: user,
-      deepLink: `gliblio://profile/${user.id}`
-    });
-    
-  } catch (error) {
-    console.error(`🔗 WEB TEST: Error:`, error);
-    return res.json({
-      success: false,
-      error: error.message,
-      details: error,
-      username: req.params.username
-    });
-  }
-});
-
-// Route: gliblio.com/username
-app.get("/:username", async (req, res) => {
-  try {
     const username = req.params.username.toLowerCase().trim()
-    console.log(`🔗 WEB: Received request for username: ${username}`)
-    console.log(`🔗 WEB: Request headers:`, req.headers)
-    
-    // Filter out system files and invalid requests
-    const systemFiles = ['.env', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json', '.git']
-    const isSystemFile = systemFiles.some(file => username.includes(file)) || 
-                        username.startsWith('.') || 
-                        username.includes('/') ||
-                        username.length < 2 ||
-                        username.length > 30
-    
-    if (isSystemFile) {
-      console.log(`🔗 WEB: Ignoring system file request: ${username}`)
-      return res.status(404).send('Not Found')
-    }
-    
-    console.log(`🔗 WEB: Looking up profile for username: ${username}`)
-    console.log(`🔗 WEB: Supabase URL configured: ${process.env.SUPABASE_URL ? 'YES' : 'NO'}`)
-    console.log(`🔗 WEB: Supabase ANON_KEY configured: ${process.env.SUPABASE_ANON_KEY ? 'YES' : 'NO'}`)
-    console.log(`🔗 WEB: Supabase READ_PROFILE_KEY configured: ${process.env.SUPABASE_READ_PROFILE_KEY ? 'YES' : 'NO'}`)
 
     const { data: user, error } = await supabase
       .from("profiles")
@@ -351,49 +93,112 @@ app.get("/:username", async (req, res) => {
       .eq("username", username)
       .single()
 
-    console.log(`🔗 WEB: Supabase response:`, { data: user, error })
-    console.log(`🔗 WEB: Error details:`, error)
-
-    if (error) {
-      console.error(`🔗 WEB: Supabase error details:`, error)
-      console.error(`🔗 WEB: Error code: ${error.code}`)
-      console.error(`🔗 WEB: Error message: ${error.message}`)
-      if (error.code === 'PGRST301') {
-        console.log(`🔗 WEB: RLS policy blocking access - user might exist but not accessible`)
-      }
-      console.log(`🔗 WEB: Redirecting to home with error for username: ${username}`)
-      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
+    if (error || !user) {
+      return res.json({
+        success: false,
+        error: "User not found",
+        details: error
+      })
     }
 
-    if (!user) {
-      console.log(`🔗 WEB: User not found in database: ${username}`)
-      console.log(`🔗 WEB: Redirecting to home with user_not_found error`)
-      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
-    }
-
-    console.log(`🔗 WEB: SUCCESS! Found user: ${user.username} (ID: ${user.id})`)
-    
-    // Direct HTTP redirect - no HTML page, just redirect immediately
-    const redirectUrl = `gliblio://profile/${user.id}`
-    console.log(`🔗 WEB: Redirecting to app: ${redirectUrl}`)
-    return res.redirect(302, redirectUrl)
-    
-  } catch (error) {
-    console.error("🔗 WEB: Server error:", error)
-    console.error("🔗 WEB: Error stack:", error.stack)
-    // Redirect to app with error instead of JSON response
-    console.log(`🔗 WEB: Redirecting to home with server_error`)
-    res.redirect(302, `gliblio://home?error=server_error`)
+    return res.json({
+      success: true,
+      user,
+      deepLink: `gliblio://profile/${user.id}`
+    })
+  } catch (e) {
+    return res.json({ success: false, error: e.message })
   }
 })
 
-// Handle 404 for other routes - invisible redirect to app
-app.use("*", (req, res) => {
-  console.log(`Unknown route: ${req.originalUrl}, redirecting to app home`)
-  res.redirect(302, 'gliblio://home')
+/* MAIN ROUTE: gliblio.com/:username  
+   This is where App Link fix happens
+*/
+app.get("/:username", async (req, res) => {
+  try {
+    const username = req.params.username.toLowerCase().trim()
+    const userAgent = req.headers["user-agent"] || ""
+
+    // Filter ignored/system files
+    const systemFiles = [
+      "favicon.ico", "robots.txt", "sitemap.xml", "manifest.json"
+    ]
+
+    if (systemFiles.includes(username)) {
+      return res.status(404).send("Not found")
+    }
+
+    // Fetch profile
+    const { data: user, error } = await supabase
+      .from("profiles")
+      .select("username, id")
+      .eq("username", username)
+      .single()
+
+    if (error || !user) {
+      return res.status(200).send(`
+        <!DOCTYPE html>
+        <html><body>User not found.</body></html>
+      `)
+    }
+
+    const deepLink = `gliblio://profile/${user.id}`
+
+    /* ANDROID APP LINK DETECTION  
+       We return HTTP 200 — no redirect  
+       Android will open the app automatically.
+    */
+    const isAndroid =
+      userAgent.includes("Android") ||
+      userAgent.includes("Dalvik") ||
+      userAgent.includes("okhttp")
+
+    const isAppLinkVerifier =
+      userAgent.includes("Google") ||
+      userAgent.includes("Chrome/") && userAgent.includes("wv") ||
+      req.headers["x-appengine-request-log-id"]
+
+    if (isAndroid || isAppLinkVerifier) {
+      console.log("✔ ANDROID App Link detected. Returning 200 OK.")
+      return res.status(200).send("OK")
+    }
+
+    /* BROWSER FALLBACK  
+       We cannot use 302 for browsers anymore,
+       so use JavaScript redirect.
+    */
+    console.log("🌐 Browser fallback triggered")
+
+    return res.status(200).send(`
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Opening App...</title>
+        <script>
+          window.location.href = "${deepLink}";
+          setTimeout(() => {
+            window.location.href = "https://gliblio.com/download";
+          }, 2000);
+        </script>
+      </head>
+      <body style="font-family:Arial;">
+        Opening Gliblio App...
+      </body>
+      </html>
+    `)
+
+  } catch (e) {
+    console.error("Fatal error:", e)
+    return res.status(200).send("Server error.")
+  }
 })
 
+/* Catch-all route */
+app.use("*", (req, res) => {
+  res.status(200).send("OK")
+})
+
+/* Start Server */
 app.listen(port, () => {
-  console.log(`Gliblio Profile Redirect Server running on port ${port}`)
-  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`)
+  console.log(`✨ Gliblio Deep Link Server running on port ${port}`)
 })
