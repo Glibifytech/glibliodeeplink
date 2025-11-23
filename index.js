@@ -361,36 +361,35 @@ app.get("/:username", async (req, res) => {
       if (error.code === 'PGRST301') {
         console.log(`🔗 WEB: RLS policy blocking access - user might exist but not accessible`)
       }
-      console.log(`🔗 WEB: Redirecting to home with error for username: ${username}`)
-      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
+      console.log(`🔗 WEB: User lookup failed, returning OK for Android App Links`)
+      return res.send('OK')
     }
 
     if (!user) {
       console.log(`🔗 WEB: User not found in database: ${username}`)
-      console.log(`🔗 WEB: Redirecting to home with user_not_found error`)
-      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
+      console.log(`🔗 WEB: Returning OK for Android App Links`)
+      return res.send('OK')
     }
 
     console.log(`🔗 WEB: SUCCESS! Found user: ${user.username} (ID: ${user.id})`)
     
-    // Direct HTTP redirect - no HTML page, just redirect immediately
-    const redirectUrl = `gliblio://profile/${user.id}`
-    console.log(`🔗 WEB: Redirecting to app: ${redirectUrl}`)
-    return res.redirect(302, redirectUrl)
+    // For Android App Links, return OK - the app will handle the deep link
+    console.log(`🔗 WEB: Returning OK for Android App Links`)
+    return res.send('OK')
     
   } catch (error) {
     console.error("🔗 WEB: Server error:", error)
     console.error("🔗 WEB: Error stack:", error.stack)
-    // Redirect to app with error instead of JSON response
-    console.log(`🔗 WEB: Redirecting to home with server_error`)
-    res.redirect(302, `gliblio://home?error=server_error`)
+    // Return OK for Android App Links even on server error
+    console.log(`🔗 WEB: Server error, returning OK for Android App Links`)
+    res.send('OK')
   }
 })
 
-// Handle 404 for other routes - invisible redirect to app
+// Handle 404 for other routes - return OK for Android App Links
 app.use("*", (req, res) => {
-  console.log(`Unknown route: ${req.originalUrl}, redirecting to app home`)
-  res.redirect(302, 'gliblio://home')
+  console.log(`Unknown route: ${req.originalUrl}, returning OK for Android App Links`)
+  res.send('OK')
 })
 
 app.listen(port, () => {
