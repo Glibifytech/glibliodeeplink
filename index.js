@@ -341,39 +341,12 @@ app.get("/:username", async (req, res) => {
       return res.status(404).send('Not Found')
     }
     
-    // Check if this is from Android (for App Links verification)
-    const isAndroidVerification = userAgent.includes('Android') && !userAgent.includes('Chrome')
-    
-    if (isAndroidVerification) {
-      console.log(`🔗 WEB: Android App Links verification request - returning OK`)
-      return res.send('OK')
-    }
-    
-    console.log(`🔗 WEB: Looking up profile for username: ${username}`)
-
-    const { data: user, error } = await supabase
-      .from("profiles")
-      .select("username, id")
-      .eq("username", username)
-      .single()
-
-    console.log(`🔗 WEB: Supabase response:`, { data: user, error })
-
-    if (error || !user) {
-      console.log(`🔗 WEB: User not found, redirecting to app home`)
-      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
-    }
-
-    console.log(`🔗 WEB: SUCCESS! Found user: ${user.username} (ID: ${user.id})`)
-    
-    // Redirect to app with profile
-    const redirectUrl = `gliblio://profile/${user.id}`
-    console.log(`🔗 WEB: Redirecting to app: ${redirectUrl}`)
-    return res.redirect(302, redirectUrl)
+    console.log(`🔗 WEB: Returning OK - Flutter will handle username lookup`)
+    return res.send('OK')
     
   } catch (error) {
     console.error("🔗 WEB: Server error:", error)
-    res.redirect(302, `gliblio://home?error=server_error`)
+    res.send('OK')
   }
 })
 
