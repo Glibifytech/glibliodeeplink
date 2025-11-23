@@ -324,8 +324,9 @@ app.get("/test/:username", async (req, res) => {
 app.get("/:username", async (req, res) => {
   try {
     const username = req.params.username.toLowerCase().trim()
+    const userAgent = req.headers['user-agent'] || ''
     console.log(`🔗 WEB: Received request for username: ${username}`)
-    console.log(`🔗 WEB: Request headers:`, req.headers)
+    console.log(`🔗 WEB: User-Agent: ${userAgent}`)
     
     // Filter out system files and invalid requests
     const systemFiles = ['.env', 'favicon.ico', 'robots.txt', 'sitemap.xml', 'manifest.json', '.git']
@@ -340,10 +341,15 @@ app.get("/:username", async (req, res) => {
       return res.status(404).send('Not Found')
     }
     
+    // Check if this is from Android (for App Links verification)
+    const isAndroidVerification = userAgent.includes('Android') && !userAgent.includes('Chrome')
+    
+    if (isAndroidVerification) {
+      console.log(`🔗 WEB: Android App Links verification request - returning OK`)
+      return res.send('OK')
+    }
+    
     console.log(`🔗 WEB: Looking up profile for username: ${username}`)
-    console.log(`🔗 WEB: Supabase URL configured: ${process.env.SUPABASE_URL ? 'YES' : 'NO'}`)
-    console.log(`🔗 WEB: Supabase ANON_KEY configured: ${process.env.SUPABASE_ANON_KEY ? 'YES' : 'NO'}`)
-    console.log(`🔗 WEB: Supabase READ_PROFILE_KEY configured: ${process.env.SUPABASE_READ_PROFILE_KEY ? 'YES' : 'NO'}`)
 
     const { data: user, error } = await supabase
       .from("profiles")
@@ -352,37 +358,22 @@ app.get("/:username", async (req, res) => {
       .single()
 
     console.log(`🔗 WEB: Supabase response:`, { data: user, error })
-    console.log(`🔗 WEB: Error details:`, error)
 
-    if (error) {
-      console.error(`🔗 WEB: Supabase error details:`, error)
-      console.error(`🔗 WEB: Error code: ${error.code}`)
-      console.error(`🔗 WEB: Error message: ${error.message}`)
-      if (error.code === 'PGRST301') {
-        console.log(`🔗 WEB: RLS policy blocking access - user might exist but not accessible`)
-      }
-      console.log(`🔗 WEB: User lookup failed, returning OK for Android App Links`)
-      return res.send('OK')
-    }
-
-    if (!user) {
-      console.log(`🔗 WEB: User not found in database: ${username}`)
-      console.log(`🔗 WEB: Returning OK for Android App Links`)
-      return res.send('OK')
+    if (error || !user) {
+      console.log(`🔗 WEB: User not found, redirecting to app home`)
+      return res.redirect(302, `gliblio://home?error=user_not_found&username=${username}`)
     }
 
     console.log(`🔗 WEB: SUCCESS! Found user: ${user.username} (ID: ${user.id})`)
     
-    // For Android App Links, return OK - the app will handle the deep link
-    console.log(`🔗 WEB: Returning OK for Android App Links`)
-    return res.send('OK')
+    // Redirect to app with profile
+    const redirectUrl = `gliblio://profile/${user.id}`
+    console.log(`🔗 WEB: Redirecting to app: ${redirectUrl}`)
+    return res.redirect(302, redirectUrl)
     
   } catch (error) {
     console.error("🔗 WEB: Server error:", error)
-    console.error("🔗 WEB: Error stack:", error.stack)
-    // Return OK for Android App Links even on server error
-    console.log(`🔗 WEB: Server error, returning OK for Android App Links`)
-    res.send('OK')
+    res.redirect(302, `gliblio://home?error=server_error`)
   }
 })
 
