@@ -40,8 +40,8 @@ app.get("/:username", (req, res) => {
     return res.status(404).send('Not Found')
   }
 
-  console.log(`🔗 Username request: ${username} - returning OK for Android App Links`)
-  res.send('OK')
+  console.log(`🔗 Username request: ${username} - redirecting to app`)
+  res.redirect(`gliblio://username/${username}`)
 })
 
 app.use("*", (req, res) => {
